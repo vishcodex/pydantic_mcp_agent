@@ -20,35 +20,57 @@ CONFIG_FILE = SCRIPT_DIR / "mcp_config.json"
 
 load_dotenv()
 
+# Configure and return the pydantic-ai model wrapper with OpenRouter support
 def get_model():
-    llm = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
-    base_url = os.getenv('BASE_URL', 'https://api.openai.com/v1')
-    api_key = os.getenv('LLM_API_KEY', 'no-api-key-provided')
+    llm = os.getenv('MODEL_CHOICE', 'anthropic/claude-3.5-sonnet')
+    base_url = os.getenv('BASE_URL', 'https://openrouter.ai/api/v1')
+    api_key = os.getenv('OPENROUTER_API_KEY', os.getenv('LLM_API_KEY', 'no-api-key-provided'))
 
-    return OpenAIModel(
-        llm,
+    # For OpenRouter, we need to set specific headers
+    # Since OpenAIModel doesn't accept a client parameter, we'll use extra_headers
+    # extra_headers = {
+    #     "HTTP-Referer": "http://localhost",  # Required by OpenRouter
+    #     "X-Title": "Pydantic MCP Agent"      # Required by OpenRouter
+    # }
+
+    # Instantiate the pydantic-ai wrapper
+    model = OpenAIModel(
+        llm,  # Positional model name
         base_url=base_url,
         api_key=api_key
     )
+    
+    # # Try to set headers on the underlying client if it exists
+    # if hasattr(model, 'client') and model.client:
+    #     model.client.default_headers.update(extra_headers)
+    
+    return model
 
+# Reverted to original structure: get model instance and pass to Agent
 async def get_pydantic_ai_agent():
-    client = mcp_client.MCPClient()
-    client.load_servers(str(CONFIG_FILE))
-    tools = await client.start()
-    return client, Agent(model=get_model(), tools=tools)
+    # Start MCP client for tools
+    mcp_instance = mcp_client.MCPClient() # Renamed local variable
+    mcp_instance.load_servers(str(CONFIG_FILE))
+    tools = await mcp_instance.start()
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~ Main Function with CLI Chat ~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Instantiate Agent using the OpenAIModel instance
+    agent = Agent(model=get_model(), tools=tools) # Pass the model instance
+
+    return mcp_instance, agent # Return renamed variable
+
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# # ~~~~~~~~~~~~~~~~~~~~ Main Function with CLI Chat ~~~~~~~~~~~~~~~~~~~~~
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 async def main():
     print("=== Pydantic AI MCP CLI Chat ===")
     print("Type 'exit' to quit the chat")
     
     # Initialize the agent and message history
-    mcp_client, mcp_agent = await get_pydantic_ai_agent()
+    mcp_instance, mcp_agent = await get_pydantic_ai_agent() # Use renamed variable
+    # print(mcp_instance, mcp_agent) # Removed debug print
     console = Console()
     messages = []
     
@@ -81,7 +103,7 @@ async def main():
                 print(f"\n[Error] An error occurred: {str(e)}")
     finally:
         # Ensure proper cleanup of MCP client resources when exiting
-        await mcp_client.cleanup()
+        await mcp_instance.cleanup()
 
 if __name__ == "__main__":
     asyncio.run(main())

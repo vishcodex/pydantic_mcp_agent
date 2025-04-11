@@ -114,9 +114,11 @@ class MCPServer:
             raise
 
     async def create_pydantic_ai_tools(self) -> List[PydanticTool]:
-        """Convert MCP tools to pydantic_ai Tools."""
-        tools = (await self.session.list_tools()).tools
-        return [self.create_tool_instance(tool) for tool in tools]            
+        """Convert MCP tools to pydantic_ai Tools, filtering out list_allowed_directories."""
+        mcp_tools = (await self.session.list_tools()).tools
+        # Filter out the 'list_allowed_directories' tool
+        filtered_tools = [tool for tool in mcp_tools if tool.name != 'list_allowed_directories']
+        return [self.create_tool_instance(tool) for tool in filtered_tools]
 
     def create_tool_instance(self, tool: MCPTool) -> PydanticTool:
         """Initialize a Pydantic AI Tool from an MCP Tool."""
@@ -143,4 +145,4 @@ class MCPServer:
                 self.session = None
                 self.stdio_context = None
             except Exception as e:
-                logging.error(f"Error during cleanup of server {self.name}: {e}")  
+                logging.error(f"Error during cleanup of server {self.name}: {e}")

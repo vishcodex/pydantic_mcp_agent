@@ -18,9 +18,11 @@ CONFIG_FILE = SCRIPT_DIR / "mcp_config.json"
 load_dotenv()
 
 def get_model():
-    llm = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
-    base_url = os.getenv('BASE_URL', 'https://api.openai.com/v1')
-    api_key = os.getenv('LLM_API_KEY', 'no-api-key-provided')
+    # Default to a common OpenRouter model, adjust if needed
+    llm = os.getenv('MODEL_CHOICE', 'anthropic/claude-3.5-sonnet')
+    base_url = os.getenv('BASE_URL', 'https://openrouter.ai/api/v1')
+    # Use OPENROUTER_API_KEY for clarity, keep fallback for generic key
+    api_key = os.getenv('OPENROUTER_API_KEY', os.getenv('LLM_API_KEY', 'no-api-key-provided'))
 
     return OpenAIModel(
         llm,
@@ -50,4 +52,4 @@ async def main():
 
 
 if __name__ == '__main__':
-    asyncio.run(main())    
+    asyncio.run(main())

@@ -5,7 +5,8 @@
         "args": [
           "-y",
           "@modelcontextprotocol/server-filesystem",
-          "/Users/vish_nu/Desktop/Modular"
+          "/Users/vish_nu/Desktop/Modular",
+          "/Users/vish_nu/Desktop/Python_Projects/pydantic_mcp_agent"
         ]
       }
     }
